@@ -32,9 +32,14 @@ class GameEngine:
 
     def handle_event(self, event):
         if self.game_over:
-            return
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                return False
+            return True
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             self._handle_click(event.pos)
+
+        return True
 
     def _handle_click(self, pos):
         x, y = pos
@@ -85,7 +90,29 @@ class GameEngine:
         acc_text = self.font.render(f"Accuracy: {self.accuracy()}%", True, WHITE)
         screen.blit(acc_text, (self.width // 2 - 90, 10))
 
-        if self.game_over and not getattr(self, "_game_over_logged", False):
-            # NOTE: no proper game-over screen yet - see Task 2 in the README.
-            print(f"Time's up! Final score: {self.score}  Accuracy: {self.accuracy()}%")
-            self._game_over_logged = True
+        if self.game_over:
+                game_over_text = self.font.render("GAME OVER", True, WHITE)
+                score_text = self.font.render(f"Final Score: {self.score}", True, WHITE)
+                accuracy_text = self.font.render(
+                    f"Final Accuracy: {self.accuracy()}%", True, WHITE
+                )
+                continue_text = self.font.render(
+                    "Press ENTER to continue", True, WHITE
+                )
+
+                screen.blit(
+                    game_over_text,
+                    game_over_text.get_rect(center=(self.width // 2, self.height // 2 - 80))
+                )
+                screen.blit(
+                    score_text,
+                    score_text.get_rect(center=(self.width // 2, self.height // 2 - 30))
+                )
+                screen.blit(
+                    accuracy_text,
+                    accuracy_text.get_rect(center=(self.width // 2, self.height // 2 + 10))
+                )
+                screen.blit(
+                    continue_text,
+                    continue_text.get_rect(center=(self.width // 2, self.height // 2 + 60))
+                )
