@@ -6,6 +6,11 @@ from .target import Target
 
 WHITE = (255, 255, 255)
 RED = (220, 60, 60)
+DIFFICULTIES = {
+    "Easy": {"base_radius": 45, "min_radius": 15, "lifespan_frames": 120},
+    "Medium": {"base_radius": 40, "min_radius": 12, "lifespan_frames": 90},
+    "Hard": {"base_radius": 35, "min_radius": 10, "lifespan_frames": 60},
+}
 
 class GameEngine:
     def __init__(self, width, height):
@@ -14,6 +19,7 @@ class GameEngine:
 
         self.margin = 60
         self.hud_height = 60
+        self.difficulty = "Medium"
         self.target = self._spawn_target()
 
         self.round_seconds = 30
@@ -28,12 +34,37 @@ class GameEngine:
     def _spawn_target(self):
         x = random.randint(self.margin, self.width - self.margin)
         y = random.randint(self.margin + self.hud_height, self.height - self.margin)
-        return Target(x, y)
 
+        settings = DIFFICULTIES[self.difficulty]
+
+        return Target(
+            x,
+            y,
+            base_radius=settings["base_radius"],
+            min_radius=settings["min_radius"],
+            lifespan_frames=settings["lifespan_frames"],
+        )
+
+    def restart(self, difficulty):
+        self.difficulty = difficulty
+        self.hits = 0
+        self.misses = 0
+        self.score = 0
+        self.time_left_frames = self.round_seconds * 60
+        self.game_over = False
+        self.target = self._spawn_target()
+        
     def handle_event(self, event):
         if self.game_over:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    self.restart("Easy")
+                elif event.key == pygame.K_2:
+                    self.restart("Medium")
+                elif event.key == pygame.K_3:
+                    self.restart("Hard")
+                elif event.key == pygame.K_ESCAPE:
+                    return False
             return True
 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -76,43 +107,135 @@ class GameEngine:
         return round(100 * self.hits / total, 1)
 
     def render(self, screen):
-        r = int(self.target.visual_radius())
-        pygame.draw.circle(screen, RED, (self.target.x, self.target.y), r)
-        pygame.draw.circle(screen, WHITE, (self.target.x, self.target.y), r, 2)
+        screen.fill((0,0,0))
+        if not self.game_over:
+            # Draw target
+            radius = int(self.target.visual_radius())
+            pygame.draw.circle(
+                screen,
+                RED,
+                (self.target.x, self.target.y),
+                radius
+            )
 
-        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
-        screen.blit(score_text, (10, 10))
+            # Draw target outline
+            pygame.draw.circle(
+                screen,
+                WHITE,
+                (self.target.x, self.target.y),
+                radius,
+                2
+            )
 
-        seconds_left = max(0, self.time_left_frames // 60)
-        timer_text = self.font.render(f"Time: {seconds_left}s", True, WHITE)
-        screen.blit(timer_text, (self.width - 140, 10))
+            # Draw score
+            score_text = self.font.render(
+                f"Score: {self.score}",
+                True,
+                WHITE
+            )
+            screen.blit(score_text, (10, 10))
 
-        acc_text = self.font.render(f"Accuracy: {self.accuracy()}%", True, WHITE)
-        screen.blit(acc_text, (self.width // 2 - 90, 10))
+            # Draw timer
+            seconds_left = max(0, self.time_left_frames // 60)
+            timer_text = self.font.render(
+                f"Time: {seconds_left}s",
+                True,
+                WHITE
+            )
+            screen.blit(
+                timer_text,
+                (self.width - 140, 10)
+            )
 
-        if self.game_over:
-                game_over_text = self.font.render("GAME OVER", True, WHITE)
-                score_text = self.font.render(f"Final Score: {self.score}", True, WHITE)
-                accuracy_text = self.font.render(
-                    f"Final Accuracy: {self.accuracy()}%", True, WHITE
-                )
-                continue_text = self.font.render(
-                    "Press ENTER to continue", True, WHITE
-                )
+            # Draw accuracy
+            accuracy_text = self.font.render(
+                f"Accuracy: {self.accuracy()}%",
+                True,
+                WHITE
+            )
+            screen.blit(
+                accuracy_text,
+                (self.width // 2 - 90, 10)
+            )
 
-                screen.blit(
-                    game_over_text,
-                    game_over_text.get_rect(center=(self.width // 2, self.height // 2 - 80))
+        else:
+            # Game Over screen
+            game_over_text = self.font.render(
+                "GAME OVER",
+                True,
+                WHITE
+            )
+
+            score_text = self.font.render(
+                f"Final Score: {self.score}",
+                True,
+                WHITE
+            )
+
+            accuracy_text = self.font.render(
+                f"Final Accuracy: {self.accuracy()}%",
+                True,
+                WHITE
+            )
+
+            difficulty_text = self.font.render(
+                "1 - Easy    2 - Medium    3 - Hard",
+                True,
+                WHITE
+            )
+
+            exit_text = self.font.render(
+                "ESC - Exit",
+                True,
+                WHITE
+            )
+
+            screen.blit(
+                game_over_text,
+                game_over_text.get_rect(
+                    center=(
+                        self.width // 2,
+                        self.height // 2 - 100
+                    )
                 )
-                screen.blit(
-                    score_text,
-                    score_text.get_rect(center=(self.width // 2, self.height // 2 - 30))
+            )
+
+            screen.blit(
+                score_text,
+                score_text.get_rect(
+                    center=(
+                        self.width // 2,
+                        self.height // 2 - 50
+                    )
                 )
-                screen.blit(
-                    accuracy_text,
-                    accuracy_text.get_rect(center=(self.width // 2, self.height // 2 + 10))
+            )
+
+            screen.blit(
+                accuracy_text,
+                accuracy_text.get_rect(
+                    center=(
+                        self.width // 2,
+                        self.height // 2 - 10
+                    )
                 )
-                screen.blit(
-                    continue_text,
-                    continue_text.get_rect(center=(self.width // 2, self.height // 2 + 60))
+            )
+
+            screen.blit(
+                difficulty_text,
+                difficulty_text.get_rect(
+                    center=(
+                        self.width // 2,
+                        self.height // 2 + 40
+                    )
                 )
+            )
+
+            screen.blit(
+                exit_text,
+                exit_text.get_rect(
+                    center=(
+                        self.width // 2,
+                        self.height // 2 + 80
+                    )
+                )
+            )
