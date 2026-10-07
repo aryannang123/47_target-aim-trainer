@@ -1,5 +1,6 @@
 import pygame
 import random
+import os
 from .target import Target
 
 # Game Engine
@@ -30,6 +31,41 @@ class GameEngine:
         self.score = 0
         self.font = pygame.font.SysFont("Arial", 26)
         self.game_over = False
+        self.hit_sound = None
+        self.miss_sound = None
+        self.round_end_sound = None
+
+        try:
+            if pygame.mixer.get_init() is None:
+                pygame.mixer.init()
+
+            sound_dir = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "assets",
+                "sounds"
+            )
+
+            self.hit_sound = pygame.mixer.Sound(
+                os.path.join(sound_dir, "hit.wav")
+            )
+            self.miss_sound = pygame.mixer.Sound(
+                os.path.join(sound_dir, "miss.wav")
+            )
+            self.round_end_sound = pygame.mixer.Sound(
+                os.path.join(sound_dir, "round_end.wav")
+            )
+
+        except (pygame.error, OSError):
+            self.hit_sound = None
+            self.miss_sound = None
+            self.round_end_sound = None
+
+    def _play_sound(self, sound):
+        if sound is not None:
+            try:
+                sound.play()
+            except pygame.error:
+                pass
 
     def _spawn_target(self):
         x = random.randint(self.margin, self.width - self.margin)
@@ -73,18 +109,21 @@ class GameEngine:
         return True
 
     def _handle_click(self, pos):
-        x, y = pos
-        if self.target.contains_point(x, y):
-            self.hits += 1
-            self.score += 1
-            self.target = self._spawn_target()
-        else:
-            self.misses += 1
+            x, y = pos
+
+            if self.target.contains_point(x, y):
+                self.hits += 1
+                self.score += 1
+                self._play_sound(self.hit_sound)
+                self.target = self._spawn_target()
+            else:
+                self.misses += 1
+                self._play_sound(self.miss_sound)
 
     def handle_input(self):
-        # Reserved for continuously-held-key input; this game is
-        # entirely mouse-driven, so there's nothing to poll here.
-        pass
+            # Reserved for continuously-held-key input; this game is
+            # entirely mouse-driven, so there's nothing to poll here.
+            pass
 
     def update(self):
         if self.game_over:
@@ -93,11 +132,13 @@ class GameEngine:
         self.time_left_frames -= 1
         if self.time_left_frames <= 0:
             self.game_over = True
+            self._play_sound(self.round_end_sound)
             return
 
         self.target.update()
         if self.target.expired():
-            self.misses += 1  # letting a target time out counts as a miss too
+            self.misses += 1
+            self._play_sound(self.miss_sound)
             self.target = self._spawn_target()
 
     def accuracy(self):
